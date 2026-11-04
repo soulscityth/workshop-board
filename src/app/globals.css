@@ -80,7 +80,7 @@ img { display: block; max-width: 100%; }
 
 /* ---------- Board ---------- */
 .topbar {
-  position: sticky; top: 0; z-index: 20; background: rgba(246, 242, 234, .92);
+  position: sticky; top: 0; z-index: 20; background: rgba(242, 245, 244, .92);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
@@ -261,7 +261,7 @@ img { display: block; max-width: 100%; }
 /* ---------- Projector display window ---------- */
 .display { position: fixed; inset: 0; background: #071517; overflow: hidden; }
 .display.idle { cursor: none; }
-.display-waiting { position: absolute; left: 0; right: 0; bottom: 3cqh; text-align: center; color: var(--muted); font-size: max(10px, 1.3cqw); }
+.display-waiting { position: absolute; left: 0; right: 0; top: 4cqh; text-align: center; color: var(--muted); font-size: max(10px, 1.3cqw); }
 .display-board { position: absolute; inset: 0; overflow: hidden; background: var(--bg); color: var(--ink); }
 .display-board .masonry { max-width: none; padding: 16px 24px; }
 .display-board .card-body { font-size: 19px; }
