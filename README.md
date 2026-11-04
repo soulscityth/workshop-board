@@ -42,6 +42,8 @@ The data is relational: boards → columns → posts → likes. "Delete post", "
 4. Deploy. Tables are created automatically on the first request.
 5. Keep **Deployment Protection** at "Standard" so the production URL is public.
 
+Pushes to `main` deploy to production automatically (Vercel ↔ GitHub link).
+
 Functions run in `sin1` (Singapore) to sit next to the database (`vercel.json`).
 
 ### 2. Environment variables
