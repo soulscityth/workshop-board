@@ -1,13 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { openChannel, type ToControl, type ToDisplay, type View } from "@/lib/present";
-import { useColumnCount, useFeed } from "@/lib/useFeed";
-import Masonry from "./Masonry";
-import PostCard from "./PostCard";
-import Qr from "./Qr";
+import { useFeed } from "@/lib/useFeed";
+import BoardWall, { ZoomView } from "./BoardWall";
 import { BlankScreen, Progress, QrCorner, QrScreen, SlideView, Stage } from "./Stage";
-
-const noop = () => {};
 
 /** Audience window for the projector. Shows whatever the presenter console sends. */
 export default function Display({ slug, initialTitle }: { slug: string; initialTitle: string }) {
@@ -18,28 +14,70 @@ export default function Display({ slug, initialTitle }: { slug: string; initialT
   const [idle, setIdle] = useState(false);
   const [origin, setOrigin] = useState("");
   const idleTimer = useRef<number | undefined>(undefined);
-  const cols = useColumnCount();
+  const [width, setWidth] = useState(1920);
+  const chan = useRef<BroadcastChannel | null>(null);
+  const wall = useRef<HTMLDivElement>(null);
+  const remoteScroll = useRef(0); // ignore scroll events caused by the console for a moment
+  const pendingTop = useRef<number | null>(null);
 
-  useEffect(() => setOrigin(window.location.origin), []);
+  useEffect(() => {
+    setOrigin(window.location.origin);
+    const size = () => setWidth(window.innerWidth);
+    size();
+    window.addEventListener("resize", size);
+    return () => window.removeEventListener("resize", size);
+  }, []);
+
+  const applyScroll = useCallback((top: number, smooth?: boolean) => {
+    const el = wall.current;
+    if (!el) {
+      pendingTop.current = top;
+      return;
+    }
+    remoteScroll.current = Date.now() + (smooth ? 800 : 150);
+    el.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });
+  }, []);
 
   // channel: receive views, announce ourselves, heartbeat
   useEffect(() => {
     const ch = openChannel(slug);
+    chan.current = ch;
     if (!ch) return;
     ch.onmessage = (e: MessageEvent<ToDisplay>) => {
       if (e.data?.t === "view") {
         setView(e.data.view);
         setTitle(e.data.title);
+      } else if (e.data?.t === "scroll") {
+        applyScroll(e.data.top, e.data.smooth);
       }
     };
     const send = (m: ToControl) => ch.postMessage(m);
+    const alive = () => send({ t: "alive", fullscreen: !!document.fullscreenElement, w: window.innerWidth, h: window.innerHeight });
     send({ t: "hello" });
-    const hb = window.setInterval(() => send({ t: "alive", fullscreen: !!document.fullscreenElement }), 2000);
+    alive();
+    const hb = window.setInterval(alive, 2000);
+    window.addEventListener("resize", alive);
     return () => {
       window.clearInterval(hb);
+      window.removeEventListener("resize", alive);
       ch.close();
     };
-  }, [slug]);
+  }, [slug, applyScroll]);
+
+  // a scroll that arrived before the wall was mounted
+  useEffect(() => {
+    if (view?.mode === "board" && wall.current && pendingTop.current != null) {
+      applyScroll(pendingTop.current);
+      pendingTop.current = null;
+    }
+  });
+
+  const scrollRaf = useRef(0);
+  const onWallScroll = (top: number) => {
+    if (Date.now() < remoteScroll.current) return;
+    cancelAnimationFrame(scrollRaf.current);
+    scrollRaf.current = requestAnimationFrame(() => chan.current?.postMessage({ t: "scroll", top } satisfies ToControl));
+  };
 
   // fullscreen state + wake lock + hide cursor when idle
   useEffect(() => {
@@ -78,7 +116,6 @@ export default function Display({ slug, initialTitle }: { slug: string; initialT
     const arr = [...posts.values()].filter((p) => filter === "all" || p.c === filter);
     return arr.sort((a, b) => b.id - a.id);
   }, [posts, filter]);
-  const colName = useMemo(() => new Map(meta.columns.map((c) => [c.id, c.name])), [meta.columns]);
 
   let body: React.ReactNode;
   if (!view) {
@@ -90,28 +127,22 @@ export default function Display({ slug, initialTitle }: { slug: string; initialT
     );
   } else if (view.mode === "board") {
     body = (
-      <div className="display-board">
-        <header className="display-board-head">
-          <h1>{title}{filter !== "all" && colName.get(filter) ? ` · ${colName.get(filter)}` : ""}</h1>
-          {origin && (
-            <div className="display-board-join">
-              <span>สแกนเพื่อโพสต์<br /><b>{publicUrl.replace(/^https?:\/\//, "")}</b></span>
-              <Qr value={publicUrl} className="display-board-qr" />
-            </div>
-          )}
-        </header>
-        <div className="masonry">
-          <Masonry
-            items={visible}
-            cols={Math.max(cols, 3)}
-            render={(p, wide, width) => (
-              <PostCard post={p} wide={wide} sizes={`${Math.round(width)}px`} liked={false}
-                columnName={filter === "all" && p.c != null ? colName.get(p.c) : undefined}
-                isAdmin={false} onLike={noop} onOpen={noop} onDelete={noop} />
-            )}
-          />
-        </div>
-      </div>
+      <>
+        <BoardWall
+          ref={wall}
+          posts={visible}
+          columns={meta.columns}
+          filter={filter}
+          title={title}
+          publicUrl={origin ? publicUrl : ""}
+          width={width}
+          onScroll={onWallScroll}
+          onOpen={(p, i) => chan.current?.postMessage({ t: "zoom", zoom: { post: p, i } } satisfies ToControl)}
+        />
+        {view.zoom && (
+          <ZoomView zoom={view.zoom} onClose={() => chan.current?.postMessage({ t: "zoom", zoom: null } satisfies ToControl)} />
+        )}
+      </>
     );
   } else if (view.mode === "slides") {
     body = (

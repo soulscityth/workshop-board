@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { colorBg } from "@/lib/colors";
 import type { Slide } from "@/lib/slides";
-import type { Post } from "@/lib/types";
 import Qr from "./Qr";
 import { timeAgo } from "./PostCard";
 
@@ -96,21 +95,4 @@ export function QrScreen({ title, url }: { title: string; url: string }) {
 
 export function BlankScreen() {
   return <div className="blank-screen" />;
-}
-
-/** Lightweight board preview for the console (the real display renders the full live wall). */
-export function BoardPreview({ posts, title }: { posts: Post[]; title: string }) {
-  const latest = posts.slice(0, 8);
-  return (
-    <div className="board-preview">
-      <p className="board-preview-title">{title}</p>
-      <div className="board-preview-grid">
-        {latest.map((p) => (
-          <div key={p.id} className="board-preview-card" style={{ background: colorBg(p.k) }}>
-            {p.p[0] ? <img src={p.p[0].s} alt="" /> : <span>{p.t.slice(0, 60)}</span>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }

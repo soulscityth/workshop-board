@@ -339,6 +339,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
           slug={slug}
           title={meta.title}
           posts={visible}
+          columns={meta.columns}
           filter={filterValid ? filter : "all"}
           filterLabel={filter !== "all" && filterValid ? colName.get(filter as number) ?? "" : ""}
           publicUrl={publicUrl}

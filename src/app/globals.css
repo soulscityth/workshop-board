@@ -235,12 +235,6 @@ img { display: block; max-width: 100%; }
 .qr-screen-url { margin: 0; font-size: max(9px, 2.2cqw); word-break: break-all; }
 .qr-screen-hint { margin: 2cqh 0 0; font-size: max(8px, 1.5cqw); color: var(--muted); }
 .blank-screen { position: absolute; inset: 0; background: #000; }
-.board-preview { position: absolute; inset: 0; background: #f6f2ea; color: #23201c; padding: 3cqh 3cqw; }
-.board-preview-title { margin: 0 0 2cqh; font-size: max(9px, 2.6cqw); font-weight: 600; }
-.board-preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.4cqw; }
-.board-preview-card { border-radius: 1cqmin; aspect-ratio: 4 / 3; overflow: hidden; font-size: max(7px, 1.2cqw); padding: 0; display: flex; align-items: center; justify-content: center; text-align: center; }
-.board-preview-card span { padding: 1cqw; }
-.board-preview-card img { width: 100%; height: 100%; object-fit: cover; }
 
 /* ---------- Single-screen slideshow overlay ---------- */
 .slideshow { position: fixed; inset: 0; z-index: 80; background: #0d0b09; color: #fff; overflow: hidden; }
@@ -284,7 +278,7 @@ img { display: block; max-width: 100%; }
 /* ---------- Presenter console (laptop) ---------- */
 .presenter {
   position: fixed; inset: 0; z-index: 75; background: #1b1a1f; color: #ecebf0;
-  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden;
 }
 .pc-top { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #2e2c34; flex-wrap: wrap; }
 .pc-brand { display: flex; flex-direction: column; min-width: 0; margin-right: auto; }
@@ -346,3 +340,12 @@ img { display: block; max-width: 100%; }
   .pc-now .pc-frame { max-height: none; height: auto; width: 100%; }
   .pc-sub { max-width: 60vw; }
 }
+.wall-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.wall-empty { text-align: center; color: var(--muted); font-size: 22px; padding: 80px 20px; }
+.zoom-view { position: absolute; inset: 0; z-index: 20; background: #0d0b09; display: flex; align-items: center; justify-content: center; animation: ssfade .35s ease; container-type: size; cursor: zoom-out; }
+.zoom-img { position: relative; max-width: 100%; max-height: 100%; object-fit: contain; background-size: cover; box-shadow: 0 1cqmin 5cqmin rgba(0,0,0,.5); }
+.vscreen { position: absolute; inset: 0; overflow: hidden; contain: strict; }
+.pc-frame { contain: layout paint; min-width: 0; }
+.vscreen-inner { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; }
+.pc-hint { align-self: center; font-size: 13px; color: #a09eaa; text-align: center; max-width: 280px; }
+.pc-big:disabled { opacity: .35; }

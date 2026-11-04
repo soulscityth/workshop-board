@@ -76,9 +76,10 @@ Similar to Canva's presenter view:
    - **On screen now**: a live preview of the projector.
    - **Next**: the slide that comes next. New posts jump the queue and are marked ✨.
    - **Modes**: slideshow, board wall, join QR, blank screen.
+   - **Board wall**: the preview is the real wall, laid out at the projector's resolution and scaled down. Scroll it with the trackpad and the projector scrolls with it. Click a photo to expand it on the projector (← → for more photos, Esc to close). Scrolling or clicking directly on the projector window also works, and the laptop preview follows.
    - **Filmstrip**: click any post to put it on screen. ✕ deletes the post.
    - **Timer**: time since presenter mode started, with reset.
-4. **Shortcuts** (presentation clickers work too): ← → / PageUp PageDown change slides, Space play/pause, B or `.` blank screen, S / W / Q switch to slides / wall / QR.
+4. **Shortcuts** (presentation clickers work too): ← → / PageUp PageDown change slides (in board mode they scroll the wall; with a photo expanded they move between photos), Space play/pause, B or `.` blank screen, Esc close photo, S / W / Q switch to slides / wall / QR.
 
 Both windows talk through `BroadcastChannel`, so they must be in the same browser on the same computer. If the projector window is reloaded, it picks up the current screen again.
 

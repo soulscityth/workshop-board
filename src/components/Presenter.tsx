@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { colorBg } from "@/lib/colors";
 import { openChannel, openDisplayWindow, type ToControl, type ToDisplay, type View } from "@/lib/present";
 import { useSlideshow, type Slide } from "@/lib/slides";
-import type { Post } from "@/lib/types";
-import { BlankScreen, BoardPreview, Progress, QrCorner, QrScreen, SlideView, Stage } from "./Stage";
+import type { Column, Post } from "@/lib/types";
+import BoardWall, { ZoomView, type Zoom } from "./BoardWall";
+import { BlankScreen, Progress, QrCorner, QrScreen, SlideView, Stage } from "./Stage";
 import { INTERVALS, useSlideSettings } from "./Slideshow";
 
 type Mode = "board" | "slides" | "qr" | "blank";
@@ -25,7 +26,7 @@ function fmt(ms: number) {
 }
 
 /** Renders a view inside a stage — used for the "now" and "next" previews. */
-function Preview({ view, title, url, posts }: { view: View; title: string; url: string; posts: Post[] }) {
+function Preview({ view, title, url }: { view: View; title: string; url: string }) {
   return (
     <Stage>
       {view.mode === "slides" && (
@@ -35,10 +36,35 @@ function Preview({ view, title, url, posts }: { view: View; title: string; url: 
           {view.playing && view.slide && view.multi && <Progress startedAt={view.startedAt} seconds={view.seconds} />}
         </>
       )}
-      {view.mode === "board" && <BoardPreview posts={posts} title={title} />}
       {view.mode === "qr" && <QrScreen title={title} url={url} />}
       {view.mode === "blank" && <BlankScreen />}
     </Stage>
+  );
+}
+
+/**
+ * The real board wall, laid out at the projector's resolution and scaled to fit the preview frame,
+ * so what you scroll/click here is exactly what the room sees.
+ */
+function VirtualScreen({ w, h, children }: { w: number; h: number; children: React.ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setScale(el.clientWidth / w));
+    ro.observe(el);
+    setScale(el.clientWidth / w);
+    return () => ro.disconnect();
+  }, [w]);
+  return (
+    <div ref={box} className="vscreen">
+      {scale > 0 && (
+        <div className="vscreen-inner" style={{ width: w, height: h, transform: `scale(${scale})` }}>
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -54,6 +80,7 @@ type Props = {
   slug: string;
   title: string;
   posts: Post[]; // filtered, newest first
+  columns: Column[];
   filter: number | "all";
   filterLabel: string;
   publicUrl: string;
@@ -63,13 +90,18 @@ type Props = {
 };
 
 /** Canva-style presenter console: the laptop controls, the projector window shows. */
-export default function Presenter({ slug, title, posts, filter, filterLabel, publicUrl, onDelete, onExit, notify }: Props) {
+export default function Presenter({ slug, title, posts, columns, filter, filterLabel, publicUrl, onDelete, onExit, notify }: Props) {
   const cfg = useSlideSettings();
   const [mode, setMode] = useState<Mode>("qr");
   const lastNonBlank = useRef<Mode>("qr");
   const [playing, setPlaying] = useState(true);
   const ss = useSlideshow(posts, { photosOnly: cfg.photosOnly, seconds: cfg.seconds, playing: playing && mode === "slides" });
   const [alive, setAlive] = useState<{ at: number; fullscreen: boolean } | null>(null);
+  const [screen, setScreen] = useState({ w: 1920, h: 1080 });
+  const [zoom, setZoom] = useState<Zoom>(null);
+  const wall = useRef<HTMLDivElement>(null);
+  const remoteScroll = useRef(0);
+  const scrollTop = useRef(0);
   const [now, setNow] = useState(() => Date.now());
   const [t0, setT0] = useState(() => Date.now());
   const chan = useRef<BroadcastChannel | null>(null);
@@ -78,9 +110,9 @@ export default function Presenter({ slug, title, posts, filter, filterLabel, pub
   const view: View = useMemo(() => {
     if (mode === "slides")
       return { mode, slide: ss.slide, startedAt: ss.startedAt, seconds: cfg.seconds, playing, showQr: cfg.showQr, multi: ss.total > 1 };
-    if (mode === "board") return { mode, filter };
+    if (mode === "board") return { mode, filter, zoom };
     return { mode };
-  }, [mode, ss.slide, ss.startedAt, ss.total, cfg.seconds, cfg.showQr, playing, filter]);
+  }, [mode, ss.slide, ss.startedAt, ss.total, cfg.seconds, cfg.showQr, playing, filter, zoom]);
 
   const nextView: View | null = useMemo(() => {
     if (mode !== "slides" || !ss.nextSlide) return null;
@@ -95,9 +127,22 @@ export default function Presenter({ slug, title, posts, filter, filterLabel, pub
     chan.current = ch;
     if (!ch) return;
     ch.onmessage = (e: MessageEvent<ToControl>) => {
-      if (e.data?.t === "hello") ch.postMessage(latest.current);
-      if (e.data?.t === "alive") setAlive({ at: Date.now(), fullscreen: e.data.fullscreen });
-      if (e.data?.t === "hello") setAlive({ at: Date.now(), fullscreen: false });
+      const m = e.data;
+      if (m?.t === "hello") {
+        ch.postMessage(latest.current);
+        if (scrollTop.current) ch.postMessage({ t: "scroll", top: scrollTop.current } satisfies ToDisplay);
+        setAlive({ at: Date.now(), fullscreen: false });
+      } else if (m?.t === "alive") {
+        setAlive({ at: Date.now(), fullscreen: m.fullscreen });
+        if (m.w > 0 && m.h > 0) setScreen((s) => (s.w === m.w && s.h === m.h ? s : { w: m.w, h: m.h }));
+      } else if (m?.t === "scroll") {
+        // the board was scrolled directly on the projector → follow it here
+        scrollTop.current = m.top;
+        remoteScroll.current = Date.now() + 150;
+        wall.current?.scrollTo({ top: m.top });
+      } else if (m?.t === "zoom") {
+        setZoom(m.zoom);
+      }
     };
     ch.postMessage(latest.current);
     return () => ch.close();
@@ -123,8 +168,37 @@ export default function Presenter({ slug, title, posts, filter, filterLabel, pub
 
   const choose = (m: Mode) => {
     if (m !== "blank") lastNonBlank.current = m;
+    if (m !== "board") setZoom(null);
     setMode(m);
   };
+
+  // scrolling the board preview scrolls the projector
+  const scrollRaf = useRef(0);
+  const onWallScroll = useCallback((top: number) => {
+    scrollTop.current = top;
+    if (Date.now() < remoteScroll.current) return;
+    cancelAnimationFrame(scrollRaf.current);
+    scrollRaf.current = requestAnimationFrame(() => chan.current?.postMessage({ t: "scroll", top } satisfies ToDisplay));
+  }, []);
+  const scrollBy = (dir: 1 | -1) => {
+    const el = wall.current;
+    if (!el) return;
+    const top = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, el.scrollTop + dir * el.clientHeight * 0.8));
+    scrollTop.current = top;
+    remoteScroll.current = Date.now() + 800;
+    el.scrollTo({ top, behavior: "smooth" });
+    chan.current?.postMessage({ t: "scroll", top, smooth: true } satisfies ToDisplay);
+  };
+  const zoomStep = (dir: 1 | -1) =>
+    setZoom((z) => (z ? { ...z, i: Math.min(z.post.p.length - 1, Math.max(0, z.i + dir)) } : z));
+
+  // keep the zoomed post fresh (likes) and close it if the post was deleted
+  useEffect(() => {
+    if (!zoom) return;
+    const fresh = posts.find((p) => p.id === zoom.post.id);
+    if (!fresh) setZoom(null);
+    else if (fresh !== zoom.post) setZoom({ post: fresh, i: Math.min(zoom.i, fresh.p.length - 1) });
+  }, [posts, zoom]);
   const step = (dir: 1 | -1) => {
     if (mode !== "slides") choose("slides");
     else ss.go(dir);
@@ -136,8 +210,20 @@ export default function Presenter({ slug, title, posts, filter, filterLabel, pub
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
     const k = e.key;
-    if (["ArrowRight", "ArrowDown", "PageDown", "Enter"].includes(k)) { e.preventDefault(); step(1); }
-    else if (["ArrowLeft", "ArrowUp", "PageUp", "Backspace"].includes(k)) { e.preventDefault(); step(-1); }
+    const fwd = ["ArrowRight", "ArrowDown", "PageDown", "Enter"].includes(k);
+    const back = ["ArrowLeft", "ArrowUp", "PageUp", "Backspace"].includes(k);
+    if (mode === "board" && zoom) {
+      // a photo is expanded: arrows move through that post's photos, Esc closes
+      if (k === "Escape" || k === "Backspace") { e.preventDefault(); return setZoom(null); }
+      if (fwd) { e.preventDefault(); return zoomStep(1); }
+      if (back) { e.preventDefault(); return zoomStep(-1); }
+    } else if (mode === "board" && (fwd || back)) {
+      // board mode: clickers / arrows scroll the wall
+      e.preventDefault();
+      return scrollBy(fwd ? 1 : -1);
+    }
+    if (fwd) { e.preventDefault(); step(1); }
+    else if (back) { e.preventDefault(); step(-1); }
     else if (k === " ") { e.preventDefault(); setPlaying((p) => !p); if (mode !== "slides") choose("slides"); }
     else if (k === "b" || k === "B" || k === "." || k === "ิ") { choose(mode === "blank" ? lastNonBlank.current : "blank"); }
     else if (k === "q" || k === "Q" || k === "ๆ") choose("qr");
@@ -186,7 +272,43 @@ export default function Presenter({ slug, title, posts, filter, filterLabel, pub
             <span className="pc-live">● บนจอตอนนี้</span>
             {mode === "slides" && ss.total > 0 && <span>สไลด์ {ss.index + 1} / {ss.total}</span>}
           </div>
-          <div className="pc-frame"><Preview view={view} title={title} url={publicUrl} posts={posts} /></div>
+          <div className="pc-frame" style={{ aspectRatio: `${screen.w} / ${screen.h}` }}>
+            {mode === "board" ? (
+              <VirtualScreen w={screen.w} h={screen.h}>
+                <BoardWall
+                  ref={wall}
+                  posts={posts}
+                  columns={columns}
+                  filter={filter}
+                  title={title}
+                  publicUrl={publicUrl}
+                  width={screen.w}
+                  onScroll={onWallScroll}
+                  onOpen={(p, i) => setZoom({ post: p, i })}
+                />
+                {zoom && <ZoomView zoom={zoom} onClose={() => setZoom(null)} />}
+              </VirtualScreen>
+            ) : (
+              <Preview view={view} title={title} url={publicUrl} />
+            )}
+          </div>
+          {mode === "board" ? (
+            <div className="pc-controls">
+              {zoom ? (
+                <>
+                  <button className="pc-big" onClick={() => zoomStep(-1)} disabled={zoom.i === 0} aria-label="รูปก่อนหน้า">‹</button>
+                  <button className="pc-big pc-play" onClick={() => setZoom(null)}>✕ ปิดรูป กลับไปที่บอร์ด</button>
+                  <button className="pc-big" onClick={() => zoomStep(1)} disabled={zoom.i >= zoom.post.p.length - 1} aria-label="รูปถัดไป">›</button>
+                </>
+              ) : (
+                <>
+                  <button className="pc-big" onClick={() => scrollBy(-1)} aria-label="เลื่อนขึ้น">↑</button>
+                  <span className="pc-hint">เลื่อนบอร์ดในกรอบด้านบนได้เลย · คลิกรูปเพื่อขยายบนจอ</span>
+                  <button className="pc-big" onClick={() => scrollBy(1)} aria-label="เลื่อนลง">↓</button>
+                </>
+              )}
+            </div>
+          ) : (
           <div className="pc-controls">
             <button className="pc-big" onClick={() => step(-1)} aria-label="ก่อนหน้า">‹</button>
             <button className="pc-big pc-play" onClick={() => { setPlaying((p) => !p); if (mode !== "slides") choose("slides"); }}>
@@ -194,6 +316,7 @@ export default function Presenter({ slug, title, posts, filter, filterLabel, pub
             </button>
             <button className="pc-big" onClick={() => step(1)} aria-label="ถัดไป">›</button>
           </div>
+          )}
         </section>
 
         <aside className="pc-side">
@@ -201,7 +324,7 @@ export default function Presenter({ slug, title, posts, filter, filterLabel, pub
             <div className="pc-label"><span>ถัดไป</span></div>
             <div className="pc-frame pc-next">
               {nextView ? (
-                <Preview view={nextView} title={title} url={publicUrl} posts={posts} />
+                <Preview view={nextView} title={title} url={publicUrl} />
               ) : (
                 <div className="pc-next-empty">{mode === "slides" ? "ไม่มีสไลด์ถัดไป" : "กด › เพื่อเริ่มสไลด์โชว์"}</div>
               )}
@@ -233,7 +356,11 @@ export default function Presenter({ slug, title, posts, filter, filterLabel, pub
             <label className="pc-check"><input type="checkbox" checked={cfg.showQr} onChange={(e) => cfg.setShowQr(e.target.checked)} /> QR มุมจอระหว่างสไลด์</label>
           </div>
 
-          <p className="pc-keys">คีย์ลัด: ← → เปลี่ยนสไลด์ · Space เล่น/หยุด · B จอดำ · รีโมตพรีเซนต์ใช้ได้</p>
+          <p className="pc-keys">
+            คีย์ลัด: ← → เปลี่ยนสไลด์ · Space เล่น/หยุด · B จอดำ<br />
+            โหมดบอร์ด: ↑ ↓ / PageUp PageDown เลื่อนบอร์ด · คลิกรูปเพื่อขยาย · Esc ปิดรูป<br />
+            ใช้กับรีโมตพรีเซนต์ได้
+          </p>
         </aside>
       </main>
 

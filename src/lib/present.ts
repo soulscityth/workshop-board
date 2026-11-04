@@ -1,15 +1,22 @@
 "use client";
 import type { Slide } from "./slides";
+import type { Post } from "./types";
 
 /** What the projector should show. The presenter console is the single source of truth. */
 export type View =
-  | { mode: "board"; filter: number | "all" }
+  | { mode: "board"; filter: number | "all"; zoom: { post: Post; i: number } | null }
   | { mode: "slides"; slide: Slide | null; startedAt: number; seconds: number; playing: boolean; showQr: boolean; multi: boolean }
   | { mode: "qr" }
   | { mode: "blank" };
 
-export type ToDisplay = { t: "view"; view: View; title: string };
-export type ToControl = { t: "hello" } | { t: "alive"; fullscreen: boolean };
+export type ToDisplay =
+  | { t: "view"; view: View; title: string }
+  | { t: "scroll"; top: number; smooth?: boolean };
+export type ToControl =
+  | { t: "hello" }
+  | { t: "alive"; fullscreen: boolean; w: number; h: number }
+  | { t: "scroll"; top: number } // the board was scrolled directly on the projector window
+  | { t: "zoom"; zoom: { post: Post; i: number } | null }; // a photo was clicked on the projector window
 
 /** Both windows live in the same browser on the facilitator's laptop, so BroadcastChannel is enough. */
 export function openChannel(slug: string): BroadcastChannel | null {
