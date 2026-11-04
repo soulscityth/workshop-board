@@ -28,6 +28,7 @@ export default function Slideshow({ posts, title, publicUrl, onClose }: { posts:
     seen.current = new Set(posts.flatMap((p) => [`${p.id}`, ...p.p.map((_, i) => `${p.id}:${i}`)]));
   }
   const chromeTimer = useRef<number | undefined>(undefined);
+  const resumeKey = useRef<string | null>(null);
 
   // Oldest → newest; loops.
   const slides = useMemo<Slide[]>(() => {
@@ -46,14 +47,23 @@ export default function Slideshow({ posts, title, publicUrl, onClose }: { posts:
     (dir = 1) => {
       if (!slides.length) return;
       const known = seen.current!;
+      const here = pos < 0 ? 0 : pos;
       if (dir > 0) {
         const fresh = [...slides].reverse().find((s) => !known.has(s.key));
         if (fresh) {
+          // remember where the normal rotation was, then show the new post
+          if (resumeKey.current == null) resumeKey.current = slides[here].key;
           known.add(fresh.key);
           return setCurrent(fresh.key);
         }
       }
-      const i = pos < 0 ? 0 : (pos + dir + slides.length) % slides.length;
+      let from = here;
+      if (resumeKey.current != null) {
+        const r = slides.findIndex((s) => s.key === resumeKey.current);
+        resumeKey.current = null;
+        if (r >= 0 && dir > 0) from = r;
+      }
+      const i = (from + dir + slides.length) % slides.length;
       known.add(slides[i].key);
       setCurrent(slides[i].key);
     },
