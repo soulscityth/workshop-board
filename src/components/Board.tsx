@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { frameHeightPerWidth, type BoardMeta, type FeedResponse, type Photo, type Post } from "@/lib/types";
+import { type BoardMeta, type FeedResponse, type Photo, type Post } from "@/lib/types";
 import { deviceId, getJSON, sessionGet, sessionSet, setJSON } from "@/lib/storage";
 import PostCard from "./PostCard";
 import Composer from "./Composer";
@@ -8,6 +8,7 @@ import Viewer from "./Viewer";
 import Qr from "./Qr";
 import { IconLock, IconMenu, IconPlay, IconPlus, IconQr } from "./icons";
 import Slideshow from "./Slideshow";
+import Masonry from "./Masonry";
 
 const POLL_MS = 4000;
 
@@ -23,16 +24,6 @@ function useColumnCount() {
     return () => window.removeEventListener("resize", calc);
   }, []);
   return n;
-}
-
-/** Rough card height so masonry can drop each card into the shortest column. */
-function estimate(p: Post) {
-  let h = 52;
-  if (p.p.length === 1) h += frameHeightPerWidth(p.p[0]) * 100;
-  else if (p.p.length === 3) h += 100;
-  else if (p.p.length > 1) h += 100;
-  if (p.t) h += 24 + Math.ceil(p.t.length / 22 + (p.t.match(/\n/g)?.length ?? 0)) * 12;
-  return h;
 }
 
 export default function Board({ slug, initialTitle }: { slug: string; initialTitle: string }) {
@@ -285,19 +276,6 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
     arr.sort((a, b) => b.id - a.id);
     return arr;
   }, [posts, filter]);
-  const columnsLayout = useMemo(() => {
-    const out: Post[][] = Array.from({ length: cols }, () => []);
-    const hs = new Array(cols).fill(0);
-    for (const p of visible) {
-      let k = 0;
-      for (let i = 1; i < cols; i++) if (hs[i] < hs[k] - 40) k = i;
-      out[k].push(p);
-      hs[k] += estimate(p);
-    }
-    return out;
-  }, [visible, cols]);
-
-  const cardSizes = cols === 1 ? "100vw" : `${Math.ceil(100 / cols)}vw`;
   const publicUrl = `${origin}/b/${slug}`;
   const isAdmin = !!adminKey;
   const filterValid = filter === "all" || meta.columns.some((c) => c.id === filter);
@@ -342,23 +320,23 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
         <div className="empty"><p>กำลังโหลด…</p></div>
       ) : (
         <main className="masonry">
-          {columnsLayout.map((col, i) => (
-            <div className="masonry-col" key={i}>
-              {col.map((p) => (
-                <PostCard
-                  key={p.id}
-                  post={p}
-                  sizes={cardSizes}
-                  liked={liked.has(p.id)}
-                  columnName={filter === "all" && p.c != null ? colName.get(p.c) : undefined}
-                  isAdmin={isAdmin}
-                  onLike={onLike}
-                  onOpen={onOpen}
-                  onDelete={onDelete}
-                />
-              ))}
-            </div>
-          ))}
+          <Masonry
+            items={visible}
+            cols={cols}
+            render={(p, wide, width) => (
+              <PostCard
+                post={p}
+                wide={wide}
+                sizes={`${Math.round(width)}px`}
+                liked={liked.has(p.id)}
+                columnName={filter === "all" && p.c != null ? colName.get(p.c) : undefined}
+                isAdmin={isAdmin}
+                onLike={onLike}
+                onOpen={onOpen}
+                onDelete={onDelete}
+              />
+            )}
+          />
         </main>
       )}
 

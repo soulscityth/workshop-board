@@ -97,12 +97,13 @@ img { display: block; max-width: 100%; }
 .status-strip.locked { background: #3a342d; color: #fff; }
 .status-strip.offline { background: #fde4d9; color: #8a2d12; }
 
-.masonry { display: flex; gap: 12px; align-items: flex-start; padding: 12px 12px calc(110px + var(--safe-b)); max-width: 1600px; margin: 0 auto; }
-.masonry-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.masonry { padding: 12px 12px calc(110px + var(--safe-b)); max-width: 1600px; margin: 0 auto; }
+.masonry-box { position: relative; }
+.masonry-item { position: absolute; left: 0; top: 0; will-change: transform; }
+.masonry-box.animate .masonry-item { transition: transform .3s ease; }
 
 .card {
   border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
-  content-visibility: auto; contain-intrinsic-size: auto 220px;
   animation: pop .25s ease-out;
 }
 @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }

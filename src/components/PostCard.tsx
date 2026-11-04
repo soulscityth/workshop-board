@@ -31,7 +31,8 @@ function Img({ ph, sizes }: { ph: Photo; sizes: string }) {
 
 type Props = {
   post: Post;
-  sizes: string; // CSS width of one card, e.g. "50vw"
+  sizes: string; // rendered card width, e.g. "380px"
+  wide?: boolean; // landscape photo spanning two columns (framed 3:2)
   liked: boolean;
   columnName?: string;
   isAdmin: boolean;
@@ -40,7 +41,7 @@ type Props = {
   onDelete: (p: Post) => void;
 };
 
-function PostCard({ post, sizes, liked, columnName, isAdmin, onLike, onOpen, onDelete }: Props) {
+function PostCard({ post, sizes, wide, liked, columnName, isAdmin, onLike, onOpen, onDelete }: Props) {
   const n = post.p.length;
   const shown = n > 4 ? post.p.slice(0, 4) : post.p;
   const gridClass = n === 0 ? "" : n === 1 ? "n1" : n === 2 ? "n2" : n === 3 ? "n3" : n === 4 ? "n4" : "nmany";
@@ -50,7 +51,7 @@ function PostCard({ post, sizes, liked, columnName, isAdmin, onLike, onOpen, onD
         <div className={`card-photos ${gridClass}`}>
           {shown.map((ph, i) => (
             <button key={ph.s + i} onClick={() => onOpen(post, i)} aria-label={`ดูรูปที่ ${i + 1} แบบเต็มจอ`}
-              style={n === 1 ? { aspectRatio: frameRatio(ph) } : n === 3 && i === 0 ? { gridColumn: "1 / -1", aspectRatio: "2 / 1" } : undefined}>
+              style={n === 1 ? { aspectRatio: wide ? "3 / 2" : frameRatio(ph) } : n === 3 && i === 0 ? { gridColumn: "1 / -1", aspectRatio: "2 / 1" } : undefined}>
               <Img ph={ph} sizes={n === 1 || (n === 3 && i === 0) ? sizes : `calc(${sizes} / 2)`} />
               {i === 3 && n > 4 && <span className="more-badge">+{n - 4}</span>}
             </button>
