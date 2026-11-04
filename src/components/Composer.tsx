@@ -32,6 +32,44 @@ type Props = {
   onPosted: (p: Post) => void;
 };
 
+const STALL_MS = 20000;
+
+/**
+ * Blob's client retries up to 10× with backoff, which on bad venue Wi-Fi can look frozen for minutes.
+ * Abort if no progress for STALL_MS so the participant gets a clear "tap to retry" instead.
+ */
+async function uploadWithWatchdog(
+  pathname: string,
+  body: Blob,
+  opts: Omit<Parameters<typeof upload>[2], "abortSignal">,
+  onProgress: (loaded: number) => void,
+) {
+  const ctrl = new AbortController();
+  let timer = window.setTimeout(() => ctrl.abort(), STALL_MS);
+  const bump = () => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => ctrl.abort(), STALL_MS);
+  };
+  const offline = () => ctrl.abort();
+  window.addEventListener("offline", offline);
+  try {
+    return await upload(pathname, body, {
+      ...opts,
+      abortSignal: ctrl.signal,
+      onUploadProgress: (e) => {
+        bump();
+        onProgress(e.loaded);
+      },
+    });
+  } catch (e) {
+    if (ctrl.signal.aborted) throw new Error("stalled");
+    throw e;
+  } finally {
+    window.clearTimeout(timer);
+    window.removeEventListener("offline", offline);
+  }
+}
+
 const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 export default function Composer({ open, slug, device, columns, defaultColumn, locked, onClose, onPosted }: Props) {
@@ -95,20 +133,22 @@ export default function Composer({ open, slug, device, columns, defaultColumn, l
       }
       patch(item.id, { status: "uploading", error: undefined });
       const total = processed.thumb.size + processed.full.size;
-      const opts = (offset: number) => ({
+      const opts = {
         access: "public" as const,
         handleUploadUrl: "/api/upload",
         clientPayload: JSON.stringify({ slug, device }),
         contentType: "image/jpeg",
-        onUploadProgress: (e: { loaded: number }) =>
-          patch(item.id, { progress: Math.min(99, Math.round(((offset + e.loaded) / total) * 100)) }),
-      });
+      };
+      const progress = (offset: number) => (loaded: number) =>
+        patch(item.id, { progress: Math.min(99, Math.round(((offset + loaded) / total) * 100)) });
       let thumbUrl = itemsRef.current.find((x) => x.id === item.id)?.thumbUrl;
       if (!thumbUrl) {
-        thumbUrl = (await upload(`b/${slug}/${rid()}_s.jpg`, processed.thumb, opts(0))).url;
+        thumbUrl = (await uploadWithWatchdog(`b/${slug}/${rid()}_s.jpg`, processed.thumb, opts, progress(0))).url;
         patch(item.id, { thumbUrl });
       }
-      const fullUrl = (await upload(`b/${slug}/${rid()}.jpg`, processed.full, opts(processed.thumb.size))).url;
+      const fullUrl = (
+        await uploadWithWatchdog(`b/${slug}/${rid()}.jpg`, processed.full, opts, progress(processed.thumb.size))
+      ).url;
       patch(item.id, { fullUrl, status: "done", progress: 100 });
     } catch (e) {
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
@@ -121,7 +161,9 @@ export default function Composer({ open, slug, device, columns, defaultColumn, l
             ? "บอร์ดถูกล็อก"
             : /rate/.test(raw)
               ? "อัปโหลดถี่เกินไป รอสักครู่"
-              : "อัปโหลดไม่สำเร็จ";
+              : raw === "stalled"
+                ? "สัญญาณช้า อัปโหลดไม่สำเร็จ"
+                : "อัปโหลดไม่สำเร็จ";
       patch(item.id, { status: "error", error: msg, processed });
       // Not-an-image / too-large errors cannot be retried; drop the file reference
       if (/10 MB|รองรับ|เปิดไฟล์/.test(raw)) patch(item.id, { processed: undefined });
