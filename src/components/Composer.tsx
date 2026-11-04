@@ -261,7 +261,7 @@ export default function Composer({ open, slug, device, columns, defaultColumn, l
 
   return (
     <div className="overlay" onClick={(e) => e.target === e.currentTarget && close()}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="composer-title">
+      <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="composer-title" style={{ paddingBottom: 0 }}>
         <div className="sheet-handle" />
         <div className="sheet-head">
           <h2 id="composer-title">โพสต์ใหม่</h2>
@@ -347,11 +347,12 @@ export default function Composer({ open, slug, device, columns, defaultColumn, l
             </label>
           </div>
 
-          {error && <p className="error-text" role="alert">{error}</p>}
-
-          <button className="btn btn-primary btn-block" style={{ minHeight: 56, fontSize: 18 }} disabled={!canSend} onClick={send}>
-            {sendLabel}
-          </button>
+          <div className="send-bar">
+            {error && <p className="error-text" role="alert" style={{ margin: "0 0 8px" }}>{error}</p>}
+            <button className="btn btn-primary btn-block" style={{ minHeight: 56, fontSize: 18 }} disabled={!canSend} onClick={send}>
+              {sendLabel}
+            </button>
+          </div>
         </div>
       </div>
     </div>

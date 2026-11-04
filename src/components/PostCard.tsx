@@ -45,7 +45,8 @@ function PostCard({ post, liked, columnName, isAdmin, onLike, onOpen, onDelete }
       {post.t && <div className="card-body">{post.t}</div>}
       <div className="card-meta">
         <span className="who">
-          {post.a ?? "ไม่ระบุชื่อ"} · {timeAgo(post.at)}
+          {post.a ?? "ไม่ระบุชื่อ"}
+          <span className="when">{timeAgo(post.at)}</span>
         </span>
         {isAdmin && (
           <button className="del-btn" onClick={() => onDelete(post)}>ลบ</button>
