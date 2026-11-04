@@ -68,6 +68,20 @@ npm run dev
    - **Admin link** (`…?admin=…`). Save it somewhere safe; it isn't shown again. This browser also remembers it under "บอร์ดของฉัน".
 3. Open the admin link. The key is removed from the address bar right away, so it's safe to project the screen. A **ผู้ดูแล** button appears with QR display, lock/unlock, zip/CSV export and clear board, and each card gets a **ลบ** (delete) button.
 
+## Presenter mode (laptop + projector on an extended screen)
+Similar to Canva's presenter view:
+1. Open the **admin link** on the laptop, then **ผู้ดูแล → โหมดผู้นำเสนอ** (presenter mode).
+2. A second window (`/b/[slug]/present`) opens. In Chrome/Edge it moves itself onto the other screen when allowed. Otherwise drag it to the projector. Click it once to go full screen.
+3. The laptop becomes the console:
+   - **On screen now**: a live preview of the projector.
+   - **Next**: the slide that comes next. New posts jump the queue and are marked ✨.
+   - **Modes**: slideshow, board wall, join QR, blank screen.
+   - **Filmstrip**: click any post to put it on screen. ✕ deletes the post.
+   - **Timer**: time since presenter mode started, with reset.
+4. **Shortcuts** (presentation clickers work too): ← → / PageUp PageDown change slides, Space play/pause, B or `.` blank screen, S / W / Q switch to slides / wall / QR.
+
+Both windows talk through `BroadcastChannel`, so they must be in the same browser on the same computer. If the projector window is reloaded, it picks up the current screen again.
+
 ## Project layout
 ```
 src/app/page.tsx                    home: create board
@@ -81,5 +95,7 @@ src/app/api/b/[slug]/export/{csv,zip}
 src/app/api/upload                  Blob client-upload token
 src/lib/image.ts                    in-browser resize / HEIC / EXIF
 src/lib/db.ts                       schema + Neon client
-src/components/                     Board, Composer, PostCard, Viewer, Qr
+src/app/b/[slug]/present            projector window for presenter mode
+src/components/                     Board, Composer, PostCard, Viewer, Qr, Masonry,
+                                    Slideshow, Stage, Presenter, Display
 ```

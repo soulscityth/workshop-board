@@ -1,6 +1,8 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type BoardMeta, type FeedResponse, type Photo, type Post } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Photo, Post } from "@/lib/types";
+import { useColumnCount, useFeed } from "@/lib/useFeed";
+import { openDisplayWindow } from "@/lib/present";
 import { deviceId, getJSON, sessionGet, sessionSet, setJSON } from "@/lib/storage";
 import PostCard from "./PostCard";
 import Composer from "./Composer";
@@ -9,28 +11,9 @@ import Qr from "./Qr";
 import { IconLock, IconMenu, IconPlay, IconPlus, IconQr } from "./icons";
 import Slideshow from "./Slideshow";
 import Masonry from "./Masonry";
-
-const POLL_MS = 4000;
-
-function useColumnCount() {
-  const [n, setN] = useState(2);
-  useEffect(() => {
-    const calc = () => {
-      const w = window.innerWidth;
-      setN(w < 340 ? 1 : w < 720 ? 2 : w < 1040 ? 3 : w < 1360 ? 4 : 5);
-    };
-    calc();
-    window.addEventListener("resize", calc);
-    return () => window.removeEventListener("resize", calc);
-  }, []);
-  return n;
-}
+import Presenter from "./Presenter";
 
 export default function Board({ slug, initialTitle }: { slug: string; initialTitle: string }) {
-  const [meta, setMeta] = useState<BoardMeta>({ slug, title: initialTitle, locked: false, columns: [] });
-  const [posts, setPosts] = useState<Map<number, Post>>(new Map());
-  const [loaded, setLoaded] = useState(false);
-  const [offline, setOffline] = useState(false);
   const [filter, setFilter] = useState<number | "all">("all");
   const [composerOpen, setComposerOpen] = useState(false);
   const [viewer, setViewer] = useState<{ photos: Photo[]; i: number } | null>(null);
@@ -42,14 +25,15 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
   const [toast, setToast] = useState("");
   const [device, setDevice] = useState("");
   const [origin, setOrigin] = useState("");
-  const version = useRef(0);
-  const likeHold = useRef(new Map<number, { likes: number; until: number }>());
+  const [presenter, setPresenter] = useState(false);
   const cols = useColumnCount();
 
   const showToast = useCallback((t: string) => {
     setToast(t);
     window.setTimeout(() => setToast((x) => (x === t ? "" : x)), 2600);
   }, []);
+  const onGone = useCallback(() => showToast("บอร์ดนี้ถูกลบแล้ว"), [showToast]);
+  const { meta, setMeta, posts, setPosts, loaded, offline, likeHold } = useFeed(slug, initialTitle, onGone);
 
   // ---- device, liked set, admin key (stripped from the address bar) ----
   useEffect(() => {
@@ -78,76 +62,12 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
     }
   }, [slug, showToast]);
 
-  // ---- polling ----
-  const apply = useCallback((data: FeedResponse) => {
-    setMeta(data.board);
-    const now = Date.now();
-    setPosts((prev) => {
-      const next = data.reset ? new Map<number, Post>() : new Map(prev);
-      if (!data.reset && data.posts.length === 0 && data.deleted.length === 0) return prev;
-      for (const p of data.posts) {
-        const hold = likeHold.current.get(p.id);
-        const old = prev.get(p.id);
-        let np = hold && hold.until > now ? { ...p, l: hold.likes } : p;
-        // keep object identity when nothing changed → memoised cards don't re-render
-        if (old && old.l === np.l && old.t === np.t && old.k === np.k && old.c === np.c && old.p.length === np.p.length) np = old;
-        next.set(p.id, np);
-      }
-      for (const id of data.deleted) next.delete(id);
-      return next;
-    });
-    version.current = data.version;
-  }, []);
-
-  useEffect(() => {
-    let timer: number | undefined;
-    let stopped = false;
-    let failures = 0;
-    const tick = async () => {
-      if (stopped) return;
-      if (document.visibilityState === "hidden") {
-        timer = window.setTimeout(tick, POLL_MS);
-        return;
-      }
-      try {
-        const res = await fetch(`/api/b/${slug}/feed?since=${version.current}`);
-        if (res.status === 404) {
-          showToast("บอร์ดนี้ถูกลบแล้ว");
-          return;
-        }
-        if (!res.ok) throw new Error(String(res.status));
-        apply(await res.json());
-        failures = 0;
-        setOffline(false);
-        setLoaded(true);
-      } catch {
-        failures++;
-        if (failures >= 2) setOffline(true);
-      }
-      const backoff = failures ? Math.min(30000, POLL_MS * 2 ** failures) : POLL_MS;
-      timer = window.setTimeout(tick, backoff + Math.random() * 800);
-    };
-    void tick();
-    const onVis = () => {
-      if (document.visibilityState === "visible") {
-        window.clearTimeout(timer);
-        void tick();
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      stopped = true;
-      window.clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [slug, apply, showToast]);
-
   // ---- actions ----
   const onPosted = useCallback((p: Post) => {
     setPosts((prev) => new Map(prev).set(p.id, p));
     showToast("โพสต์แล้ว 🎉");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [showToast]);
+  }, [showToast, setPosts]);
 
   const onLike = useCallback(
     async (p: Post) => {
@@ -182,7 +102,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
         showToast("กดถูกใจไม่สำเร็จ");
       }
     },
-    [liked, slug, showToast],
+    [liked, slug, showToast, setPosts, likeHold],
   );
 
   const admin = useCallback(
@@ -214,7 +134,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
         showToast("ลบแล้ว");
       }
     },
-    [admin, showToast],
+    [admin, showToast, setPosts],
   );
 
   const onOpen = useCallback((p: Post, i: number) => setViewer({ photos: p.p, i }), []);
@@ -234,6 +154,13 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
     form.remove();
     setMenuOpen(false);
     showToast(kind === "zip" ? "กำลังเตรียมไฟล์ zip… (บอร์ดใหญ่อาจใช้เวลาสักครู่)" : "กำลังดาวน์โหลด CSV…");
+  }
+
+  function startPresenter() {
+    setMenuOpen(false);
+    // open the projector window inside this click (popup rules), then switch this tab to the console
+    if (!openDisplayWindow(slug)) showToast("เบราว์เซอร์บล็อกหน้าต่างใหม่ — กรุณาอนุญาตป๊อปอัป แล้วกด “เปิดจอแสดงผล”");
+    setPresenter(true);
   }
 
   async function toggleLock() {
@@ -385,7 +312,8 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
             <p className="muted" style={{ marginTop: 0, fontSize: 14 }}>{posts.size} โพสต์ · แตะ “ลบ” บนการ์ดเพื่อลบโพสต์</p>
             <div className="admin-menu">
               <button className="btn" onClick={() => { setMenuOpen(false); setQrOpen(true); }}>📱 แสดง QR ขึ้นจอ</button>
-              <button className="btn" onClick={() => { setMenuOpen(false); setSlideshow(true); }}>▶️ เล่นสไลด์โชว์ (ขึ้นจอโปรเจกเตอร์)</button>
+              <button className="btn" onClick={startPresenter}>🖥️ โหมดผู้นำเสนอ (จอขยาย: ควบคุมบนโน้ตบุ๊ก / แสดงบนโปรเจกเตอร์)</button>
+              <button className="btn" onClick={() => { setMenuOpen(false); setSlideshow(true); }}>▶️ เล่นสไลด์โชว์ (จอเดียว)</button>
               <button className="btn" onClick={toggleLock}>{meta.locked ? "🔓 ปลดล็อกบอร์ด (เปิดรับโพสต์)" : "🔒 ล็อกบอร์ด (หยุดรับโพสต์)"}</button>
               <button className="btn" onClick={() => download("zip")}>🗂️ ดาวน์โหลดรูปทั้งหมด (.zip)</button>
               <button className="btn" onClick={() => download("csv")}>📄 ส่งออกโพสต์เป็น CSV</button>
@@ -403,6 +331,20 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
           title={filter !== "all" && filterValid ? `${meta.title} · ${colName.get(filter as number) ?? ""}` : meta.title}
           publicUrl={publicUrl}
           onClose={() => setSlideshow(false)}
+        />
+      )}
+
+      {presenter && isAdmin && (
+        <Presenter
+          slug={slug}
+          title={meta.title}
+          posts={visible}
+          filter={filterValid ? filter : "all"}
+          filterLabel={filter !== "all" && filterValid ? colName.get(filter as number) ?? "" : ""}
+          publicUrl={publicUrl}
+          onDelete={onDelete}
+          onExit={() => setPresenter(false)}
+          notify={showToast}
         />
       )}
 
