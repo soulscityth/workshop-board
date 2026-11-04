@@ -1,7 +1,7 @@
 "use client";
 import { memo } from "react";
 import { colorBg } from "@/lib/colors";
-import type { Post } from "@/lib/types";
+import { frameRatio, thumbWidth, type Photo, type Post } from "@/lib/types";
 import { IconHeart } from "./icons";
 
 const rtf = typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl ? new Intl.RelativeTimeFormat("th", { numeric: "auto" }) : null;
@@ -14,8 +14,24 @@ export function timeAgo(ms: number) {
   return new Date(ms).toLocaleDateString("th-TH", { day: "numeric", month: "short" });
 }
 
+/** Let the browser pick the thumbnail on phones and the full photo on big/projector screens. */
+function Img({ ph, sizes }: { ph: Photo; sizes: string }) {
+  const sw = thumbWidth(ph);
+  return (
+    <img
+      src={ph.s}
+      srcSet={sw < ph.w ? `${ph.s} ${sw}w, ${ph.u} ${ph.w}w` : undefined}
+      sizes={sizes}
+      alt=""
+      loading="lazy"
+      decoding="async"
+    />
+  );
+}
+
 type Props = {
   post: Post;
+  sizes: string; // CSS width of one card, e.g. "50vw"
   liked: boolean;
   columnName?: string;
   isAdmin: boolean;
@@ -24,7 +40,7 @@ type Props = {
   onDelete: (p: Post) => void;
 };
 
-function PostCard({ post, liked, columnName, isAdmin, onLike, onOpen, onDelete }: Props) {
+function PostCard({ post, sizes, liked, columnName, isAdmin, onLike, onOpen, onDelete }: Props) {
   const n = post.p.length;
   const shown = n > 4 ? post.p.slice(0, 4) : post.p;
   const gridClass = n === 0 ? "" : n === 1 ? "n1" : n === 2 ? "n2" : n === 3 ? "n3" : n === 4 ? "n4" : "nmany";
@@ -34,8 +50,8 @@ function PostCard({ post, liked, columnName, isAdmin, onLike, onOpen, onDelete }
         <div className={`card-photos ${gridClass}`}>
           {shown.map((ph, i) => (
             <button key={ph.s + i} onClick={() => onOpen(post, i)} aria-label={`ดูรูปที่ ${i + 1} แบบเต็มจอ`}
-              style={n === 3 && i === 0 ? { gridColumn: "1 / -1", aspectRatio: "2 / 1" } : undefined}>
-              <img src={ph.s} alt="" width={ph.w} height={ph.h} loading="lazy" decoding="async" />
+              style={n === 1 ? { aspectRatio: frameRatio(ph) } : n === 3 && i === 0 ? { gridColumn: "1 / -1", aspectRatio: "2 / 1" } : undefined}>
+              <Img ph={ph} sizes={n === 1 || (n === 3 && i === 0) ? sizes : `calc(${sizes} / 2)`} />
               {i === 3 && n > 4 && <span className="more-badge">+{n - 4}</span>}
             </button>
           ))}

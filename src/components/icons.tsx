@@ -6,3 +6,4 @@ export const IconQr = () => (<svg {...p}><rect x="3" y="3" width="7" height="7" 
 export const IconMenu = () => (<svg {...p}><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></svg>);
 export const IconPlus = () => (<svg {...p}><path d="M12 5v14M5 12h14" /></svg>);
 export const IconLock = () => (<svg {...p} width={18} height={18}><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>);
+export const IconPlay = () => (<svg {...p}><path d="M7 4.5v15l12-7.5z" /></svg>);

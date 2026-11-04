@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { BoardMeta, FeedResponse, Photo, Post } from "@/lib/types";
+import { frameHeightPerWidth, type BoardMeta, type FeedResponse, type Photo, type Post } from "@/lib/types";
 import { deviceId, getJSON, sessionGet, sessionSet, setJSON } from "@/lib/storage";
 import PostCard from "./PostCard";
 import Composer from "./Composer";
 import Viewer from "./Viewer";
 import Qr from "./Qr";
-import { IconLock, IconMenu, IconPlus, IconQr } from "./icons";
+import { IconLock, IconMenu, IconPlay, IconPlus, IconQr } from "./icons";
+import Slideshow from "./Slideshow";
 
 const POLL_MS = 4000;
 
@@ -27,7 +28,7 @@ function useColumnCount() {
 /** Rough card height so masonry can drop each card into the shortest column. */
 function estimate(p: Post) {
   let h = 52;
-  if (p.p.length === 1) h += Math.min(1.4, p.p[0].h / p.p[0].w) * 100;
+  if (p.p.length === 1) h += frameHeightPerWidth(p.p[0]) * 100;
   else if (p.p.length === 3) h += 100;
   else if (p.p.length > 1) h += 100;
   if (p.t) h += 24 + Math.ceil(p.t.length / 22 + (p.t.match(/\n/g)?.length ?? 0)) * 12;
@@ -44,6 +45,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
   const [viewer, setViewer] = useState<{ photos: Photo[]; i: number } | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [slideshow, setSlideshow] = useState(false);
   const [adminKey, setAdminKey] = useState<string | null>(null);
   const [liked, setLiked] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState("");
@@ -295,6 +297,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
     return out;
   }, [visible, cols]);
 
+  const cardSizes = cols === 1 ? "100vw" : `${Math.ceil(100 / cols)}vw`;
   const publicUrl = `${origin}/b/${slug}`;
   const isAdmin = !!adminKey;
   const filterValid = filter === "all" || meta.columns.some((c) => c.id === filter);
@@ -305,6 +308,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
         <div className="topbar-inner">
           <h1 className="board-title">{meta.title}</h1>
           {meta.locked && <span className="muted" title="บอร์ดถูกล็อก"><IconLock /></span>}
+          <button className="icon-btn" onClick={() => setSlideshow(true)} aria-label="เล่นสไลด์โชว์" title="สไลด์โชว์"><IconPlay /></button>
           <button className="icon-btn" onClick={() => setQrOpen(true)} aria-label="แสดง QR code"><IconQr /></button>
           {isAdmin && (
             <button className="btn btn-sm" onClick={() => setMenuOpen(true)} aria-label="เมนูผู้ดูแล">
@@ -344,6 +348,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
                 <PostCard
                   key={p.id}
                   post={p}
+                  sizes={cardSizes}
                   liked={liked.has(p.id)}
                   columnName={filter === "all" && p.c != null ? colName.get(p.c) : undefined}
                   isAdmin={isAdmin}
@@ -402,6 +407,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
             <p className="muted" style={{ marginTop: 0, fontSize: 14 }}>{posts.size} โพสต์ · แตะ “ลบ” บนการ์ดเพื่อลบโพสต์</p>
             <div className="admin-menu">
               <button className="btn" onClick={() => { setMenuOpen(false); setQrOpen(true); }}>📱 แสดง QR ขึ้นจอ</button>
+              <button className="btn" onClick={() => { setMenuOpen(false); setSlideshow(true); }}>▶️ เล่นสไลด์โชว์ (ขึ้นจอโปรเจกเตอร์)</button>
               <button className="btn" onClick={toggleLock}>{meta.locked ? "🔓 ปลดล็อกบอร์ด (เปิดรับโพสต์)" : "🔒 ล็อกบอร์ด (หยุดรับโพสต์)"}</button>
               <button className="btn" onClick={() => download("zip")}>🗂️ ดาวน์โหลดรูปทั้งหมด (.zip)</button>
               <button className="btn" onClick={() => download("csv")}>📄 ส่งออกโพสต์เป็น CSV</button>
@@ -411,6 +417,15 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
             </div>
           </div>
         </div>
+      )}
+
+      {slideshow && (
+        <Slideshow
+          posts={visible}
+          title={filter !== "all" && filterValid ? `${meta.title} · ${colName.get(filter as number) ?? ""}` : meta.title}
+          publicUrl={publicUrl}
+          onClose={() => setSlideshow(false)}
+        />
       )}
 
       {toast && <div className="toast" role="status">{toast}</div>}

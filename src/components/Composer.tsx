@@ -225,6 +225,7 @@ export default function Composer({ open, slug, device, columns, defaultColumn, l
         s: it.thumbUrl!,
         w: it.processed?.w ?? 1,
         h: it.processed?.h ?? 1,
+        sw: it.processed?.sw,
       }));
       const res = await fetch(`/api/b/${slug}/posts`, {
         method: "POST",

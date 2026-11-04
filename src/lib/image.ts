@@ -2,9 +2,11 @@
 
 export const MAX_INPUT_BYTES = 10 * 1024 * 1024;
 const FULL_EDGE = 1600;
-const THUMB_EDGE = 480;
+// Thumbnail: short edge ≤720px, long edge ≤1080px — sharp on 2–3× phone screens in a 2-column grid.
+const THUMB_SHORT = 720;
+const THUMB_LONG = 1080;
 
-export type Processed = { full: Blob; thumb: Blob; w: number; h: number };
+export type Processed = { full: Blob; thumb: Blob; w: number; h: number; sw: number };
 
 function isHeic(file: File) {
   return /image\/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
@@ -38,8 +40,8 @@ async function decode(blob: Blob): Promise<Source> {
   }
 }
 
-function render(src: Source, maxEdge: number, quality: number): Promise<{ blob: Blob; w: number; h: number }> {
-  const scale = Math.min(1, maxEdge / Math.max(src.w, src.h));
+function render(src: Source, scale: number, quality: number): Promise<{ blob: Blob; w: number; h: number }> {
+  scale = Math.min(1, scale);
   const w = Math.max(1, Math.round(src.w * scale));
   const h = Math.max(1, Math.round(src.h * scale));
   const canvas = document.createElement("canvas");
@@ -67,7 +69,7 @@ function render(src: Source, maxEdge: number, quality: number): Promise<{ blob: 
 }
 
 /**
- * Resize + compress in the browser: long edge ≤1600px JPEG 0.8, plus a 480px thumbnail.
+ * Resize + compress in the browser: long edge ≤1600px JPEG 0.8, plus a ~720px thumbnail.
  * Redrawing on canvas also strips EXIF (incl. GPS location).
  */
 export async function processImage(file: File): Promise<Processed> {
@@ -88,9 +90,10 @@ export async function processImage(file: File): Promise<Processed> {
     });
   }
   try {
-    const full = await render(src, FULL_EDGE, 0.8);
-    const thumb = await render(src, THUMB_EDGE, 0.72);
-    return { full: full.blob, thumb: thumb.blob, w: full.w, h: full.h };
+    const full = await render(src, FULL_EDGE / Math.max(src.w, src.h), 0.8);
+    const thumbScale = Math.min(THUMB_SHORT / Math.min(src.w, src.h), THUMB_LONG / Math.max(src.w, src.h));
+    const thumb = await render(src, thumbScale, 0.8);
+    return { full: full.blob, thumb: thumb.blob, w: full.w, h: full.h, sw: thumb.w };
   } finally {
     src.close?.();
   }

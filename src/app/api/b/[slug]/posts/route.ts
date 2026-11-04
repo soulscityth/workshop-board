@@ -38,7 +38,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
     const w = Math.round(Number(p?.w));
     const h = Math.round(Number(p?.h));
     if (!u || !s || !(w > 0 && w < 10000) || !(h > 0 && h < 10000)) return err("ไฟล์รูปไม่ถูกต้อง");
-    photos.push({ u, s, w, h });
+    const sw = Math.round(Number(p?.sw));
+    photos.push(sw > 0 && sw <= w ? { u, s, w, h, sw } : { u, s, w, h });
   }
   if (!text && !photos.length) return err("กรุณาเขียนข้อความหรือเพิ่มรูปอย่างน้อย 1 อย่าง");
 
