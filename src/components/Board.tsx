@@ -211,6 +211,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
     <>
       <header className="topbar">
         <div className="topbar-inner">
+          <img className="topbar-logo" src="/logo.png" alt="SoulScity" />
           <h1 className="board-title">{meta.title}</h1>
           {meta.locked && <span className="muted" title="บอร์ดถูกล็อก"><IconLock /></span>}
           <button className="icon-btn" onClick={() => setSlideshow(true)} aria-label="เล่นสไลด์โชว์" title="สไลด์โชว์"><IconPlay /></button>

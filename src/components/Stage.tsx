@@ -84,6 +84,7 @@ export function QrScreen({ title, url }: { title: string; url: string }) {
         <Qr value={url} className="qr-screen-code" />
       </div>
       <div className="qr-screen-text">
+        <div className="qr-screen-brand"><img src="/logo.png" alt="" /> SoulScity Board</div>
         <p className="qr-screen-kicker">สแกนเพื่อเข้าร่วมบอร์ด</p>
         <h2 className="qr-screen-title">{title}</h2>
         <p className="qr-screen-url">{url.replace(/^https?:\/\//, "")}</p>

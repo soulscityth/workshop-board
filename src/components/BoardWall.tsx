@@ -31,7 +31,7 @@ const BoardWall = forwardRef<HTMLDivElement, Props>(function BoardWall(
     <div className="display-board">
       <div className="wall-scroll" ref={ref} onScroll={(e) => onScroll?.(e.currentTarget.scrollTop)}>
         <header className="display-board-head">
-          <h1>{title}{filter !== "all" && colName.get(filter) ? ` · ${colName.get(filter)}` : ""}</h1>
+          <h1><img className="brand-mini" src="/logo.png" alt="" />{title}{filter !== "all" && colName.get(filter) ? ` · ${colName.get(filter)}` : ""}</h1>
           {publicUrl && (
             <div className="display-board-join">
               <span>สแกนเพื่อโพสต์<br /><b>{publicUrl.replace(/^https?:\/\//, "")}</b></span>

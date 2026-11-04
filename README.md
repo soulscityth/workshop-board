@@ -1,10 +1,12 @@
-# Workshop Board · บอร์ดเวิร์กช็อป
+# SoulScity Board · บอร์ดเวิร์กช็อป
+
+**Live:** https://board.soulscity.co.th (also https://workshop-board-iota.vercel.app)
 
 A Padlet-style board for in-person workshops. Participants scan a QR code and post notes and photos from their phones. They don't need an account.
 
 - **Stack:** Next.js 15 (App Router, TypeScript) on Vercel, with Neon Postgres for data and Vercel Blob for photos.
 - **Live updates:** each phone checks for changes every ~4 s. There are no websockets.
-- **UI:** Thai text, Mitr font, mobile-first.
+- **UI:** Thai text, Mitr font, mobile-first, SoulScity CI (deep teal `#0F3B40` with the round S logo).
 
 ## Features
 
@@ -43,6 +45,8 @@ The data is relational: boards → columns → posts → likes. "Delete post", "
 5. Keep **Deployment Protection** at "Standard" so the production URL is public.
 
 Pushes to `main` deploy to production automatically (Vercel ↔ GitHub link).
+
+Custom domain: `board.soulscity.co.th` (subdomain of the SoulScity zone on Vercel DNS, attached only to this project).
 
 Functions run in `sin1` (Singapore) to sit next to the database (`vercel.json`).
 

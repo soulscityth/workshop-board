@@ -10,7 +10,7 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const board = await getBoard(slug);
-  return { title: board ? `${board.title} · บอร์ดเวิร์กช็อป` : "ไม่พบบอร์ด", robots: { index: false } };
+  return { title: board ? `${board.title} · SoulScity Board` : "ไม่พบบอร์ด", robots: { index: false } };
 }
 
 export default async function BoardPage({ params }: Props) {
