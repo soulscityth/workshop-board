@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
 import { clientIp, err, hashKey, json, LIMITS, newAdminKey, newSlug, rateLimit } from "@/lib/server";
+import { isTeamRequest } from "@/lib/team";
 
 export async function POST(req: Request) {
   let body: { title?: unknown; columns?: unknown; password?: unknown };
@@ -10,7 +11,7 @@ export async function POST(req: Request) {
   }
 
   const required = process.env.CREATE_BOARD_PASSWORD;
-  if (required && body.password !== required) return err("รหัสสำหรับสร้างบอร์ดไม่ถูกต้อง", 403);
+  if (required && body.password !== required && !isTeamRequest(req)) return err("รหัสสำหรับสร้างบอร์ดไม่ถูกต้อง", 403);
 
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 120) : "";
   if (!title) return err("กรุณาใส่ชื่อบอร์ด");

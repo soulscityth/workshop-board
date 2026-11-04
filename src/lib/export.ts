@@ -1,6 +1,7 @@
 import "server-only";
 import { sql } from "./db";
 import { getBoard, getColumns, isAdmin, toPost, type BoardRow } from "./server";
+import { isTeamRequest } from "./team";
 
 /** Export endpoints are submitted as an HTML form POST so the browser downloads the file directly. */
 export async function authExport(req: Request, slug: string): Promise<BoardRow | Response> {
@@ -13,7 +14,7 @@ export async function authExport(req: Request, slug: string): Promise<BoardRow |
       key = String(form.get("key") ?? "");
     } catch {}
   }
-  if (!isAdmin(board, key)) return new Response("ลิงก์ผู้ดูแลไม่ถูกต้อง", { status: 403 });
+  if (!isAdmin(board, key) && !isTeamRequest(req)) return new Response("ลิงก์ผู้ดูแลไม่ถูกต้อง", { status: 403 });
   return board;
 }
 

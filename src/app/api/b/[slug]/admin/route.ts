@@ -1,6 +1,7 @@
 import { del } from "@vercel/blob";
 import { sql } from "@/lib/db";
 import { allPhotoUrls, err, getBoard, isAdmin, json } from "@/lib/server";
+import { isTeamRequest } from "@/lib/team";
 import type { Photo } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -10,7 +11,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   const { slug } = await ctx.params;
   const board = await getBoard(slug);
   if (!board) return err("ไม่พบบอร์ดนี้", 404);
-  if (!isAdmin(board, req.headers.get("x-admin-key"))) return err("ลิงก์ผู้ดูแลไม่ถูกต้อง", 403);
+  if (!isAdmin(board, req.headers.get("x-admin-key")) && !isTeamRequest(req)) return err("ลิงก์ผู้ดูแลไม่ถูกต้อง", 403);
 
   let b: { action?: string; postId?: unknown };
   try {

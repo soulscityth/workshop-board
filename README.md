@@ -56,6 +56,7 @@ Functions run in `sin1` (Singapore) to sit next to the database (`vercel.json`).
 |---|---|---|
 | `DATABASE_URL` | ✅ | Neon connection string (`POSTGRES_URL` also works) |
 | `BLOB_READ_WRITE_TOKEN` | ✅ | From the Blob store |
+| `ADMIN_PASSWORD` | recommended | SoulScity team password for `/admin` (all boards). Changing it signs everyone out |
 | `CREATE_BOARD_PASSWORD` | optional | If set, the home page asks for this password before anyone can create a board |
 
 ### 3. Local development
@@ -71,6 +72,14 @@ npm run dev
    - **Public link + QR code.** Show it on screen or print it.
    - **Admin link** (`…?admin=…`). Save it somewhere safe; it isn't shown again. This browser also remembers it under "บอร์ดของฉัน".
 3. Open the admin link. The key is removed from the address bar right away, so it's safe to project the screen. A **ผู้ดูแล** button appears with QR display, lock/unlock, zip/CSV export and clear board, and each card gets a **ลบ** (delete) button.
+
+## Team admin (`/admin`)
+`https://board.soulscity.co.th/admin`. Log in with `ADMIN_PASSWORD`; the login lasts 14 days on that browser.
+- Every board with created date, posts, photos, storage used and last activity. Search by name or code.
+- **เปิด (ผู้ดูแล)** (open as admin): while logged in you are admin on every board, no admin link needed. Presenter mode and zip/CSV work too.
+- **ออกลิงก์ผู้ดูแลใหม่** (issue a new admin link): the old admin link stops working immediately. Admin keys are stored only as hashes, so a lost link cannot be recovered, only replaced.
+- **ลบบอร์ด** (delete board): deletes the board, its posts and every file under `b/<slug>/` in Blob. You must type the board name to confirm.
+- Totals at the top: boards, posts, photo storage used.
 
 ## Presenter mode (laptop + projector on an extended screen)
 Similar to Canva's presenter view:

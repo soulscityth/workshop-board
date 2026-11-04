@@ -373,3 +373,23 @@ img { display: block; max-width: 100%; }
 .qr-screen-brand img { width: 4.5cqw; height: 4.5cqw; border-radius: 999px; }
 .display-board-head .brand-mini { width: clamp(36px, 3vw, 56px); height: clamp(36px, 3vw, 56px); border-radius: 999px; }
 .display-board-head h1 { display: flex; align-items: center; gap: 14px; }
+
+/* ---------- Team admin (/admin) ---------- */
+.admin { max-width: 1100px; margin: 0 auto; padding: 20px 16px 80px; }
+.admin-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 18px 0; }
+.stat { background: linear-gradient(135deg, #0f3b40, #1a5a60); color: #fff; border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; }
+.stat span { font-size: 13px; opacity: .8; }
+.stat b { font-size: 28px; font-weight: 600; line-height: 1.2; }
+.stat small { font-size: 12px; opacity: .75; }
+.admin-search { margin-bottom: 12px; }
+.admin-rotated { margin: 0 0 14px; border: 2px solid var(--brand-bright); }
+.admin-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.admin-card { background: #fff; border-radius: 16px; box-shadow: var(--shadow); padding: 14px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.admin-card-main { flex: 1 1 320px; min-width: 0; }
+.admin-card-title { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 500; }
+.admin-card-title a { text-decoration: none; color: var(--brand); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-card-title a:hover { text-decoration: underline; }
+.admin-card-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.admin-card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.badge { font-size: 12px; background: #3a342d; color: #fff; border-radius: 999px; padding: 1px 8px; font-weight: 400; }

@@ -48,6 +48,23 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
       window.history.replaceState(null, "", url.pathname + url.search + url.hash);
     }
     const key = fromUrl || sessionGet(`wb:admin:${slug}`);
+    // Logged in to /admin as the SoulScity team → admin on every board without a link key.
+    const team = (() => {
+      try {
+        return document.cookie.split(";").some((c) => c.trim() === "wb_team_ui=1");
+      } catch {
+        return false;
+      }
+    })();
+    if (!key && team) {
+      fetch(`/api/b/${slug}/admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify" }),
+      })
+        .then((r) => r.ok && setAdminKey(""))
+        .catch(() => {});
+    }
     if (key) {
       fetch(`/api/b/${slug}/admin`, {
         method: "POST",
@@ -107,7 +124,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
 
   const admin = useCallback(
     async (action: string, extra?: Record<string, unknown>) => {
-      if (!adminKey) return false;
+      if (adminKey === null) return false;
       const res = await fetch(`/api/b/${slug}/admin`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
@@ -140,7 +157,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
   const onOpen = useCallback((p: Post, i: number) => setViewer({ photos: p.p, i }), []);
 
   function download(kind: "csv" | "zip") {
-    if (!adminKey) return;
+    if (adminKey === null) return;
     const form = document.createElement("form");
     form.method = "POST";
     form.action = `/api/b/${slug}/export/${kind}`;
@@ -204,7 +221,7 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
     return arr;
   }, [posts, filter]);
   const publicUrl = `${origin}/b/${slug}`;
-  const isAdmin = !!adminKey;
+  const isAdmin = adminKey !== null;
   const filterValid = filter === "all" || meta.columns.some((c) => c.id === filter);
 
   return (
@@ -319,7 +336,11 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
               <button className="btn" onClick={() => download("zip")}>🗂️ ดาวน์โหลดรูปทั้งหมด (.zip)</button>
               <button className="btn" onClick={() => download("csv")}>📄 ส่งออกโพสต์เป็น CSV</button>
               <button className="btn" onClick={() => copy(publicUrl)}>🔗 คัดลอกลิงก์ผู้เข้าร่วม</button>
-              <button className="btn" onClick={() => adminKey && copy(`${publicUrl}?admin=${adminKey}`)}>🔑 คัดลอกลิงก์ผู้ดูแล</button>
+              {adminKey ? (
+                <button className="btn" onClick={() => copy(`${publicUrl}?admin=${adminKey}`)}>🔑 คัดลอกลิงก์ผู้ดูแล</button>
+              ) : (
+                <a className="btn" href="/admin">🔑 ลิงก์ผู้ดูแล: ออกใหม่ได้ที่หน้าจัดการบอร์ด</a>
+              )}
               <button className="btn btn-danger" onClick={clearBoard}>🗑️ ล้างบอร์ด (ลบทุกโพสต์)</button>
             </div>
           </div>
