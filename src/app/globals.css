@@ -393,3 +393,29 @@ img { display: block; max-width: 100%; }
 .admin-card-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); margin-top: 2px; }
 .admin-card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .badge { font-size: 12px; background: #3a342d; color: #fff; border-radius: 999px; padding: 1px 8px; font-weight: 400; }
+
+/* ---------- Usage meters (/admin) ----------
+   Meter: fill carries severity (brand teal → warning amber → critical red), track is a lighter step of the
+   same hue; an icon + text label always states the level so colour never carries it alone. */
+.usage { margin: 0 0 16px; }
+.usage-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.usage-head h2 { margin: 0; font-size: 19px; font-weight: 600; color: var(--ink); }
+.usage-head p { margin: 2px 0 0; font-size: 13px; }
+.capacity { display: flex; align-items: center; gap: 14px; background: var(--accent-soft); border-radius: 14px; padding: 12px 16px; margin: 14px 0; color: var(--ink); }
+.capacity-big { font-size: 40px; font-weight: 600; line-height: 1; color: var(--brand); font-variant-numeric: tabular-nums; }
+.capacity small { color: var(--muted); font-size: 13px; }
+.meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.meter { --fill: #1a5a60; --track: #d5e7e6; }
+.meter-warn { --fill: #fab219; --track: #fdecc4; }
+.meter-crit { --fill: #d03b3b; --track: #f6d4d4; }
+.meter-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.meter-label { color: var(--ink); font-weight: 500; }
+.meter-status { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.meter-value { font-size: 14px; color: var(--muted); margin: 2px 0 6px; font-variant-numeric: tabular-nums; }
+.meter-value b { color: var(--ink); font-size: 20px; font-weight: 600; }
+.meter-pct { font-size: 13px; }
+.meter-track { height: 10px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.meter-fill { height: 100%; border-radius: 999px; background: var(--fill); transition: width .4s ease; }
+.meter-note { margin: 6px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.usage-foot { margin: 14px 0 0; font-size: 12px; color: var(--muted); }
+@media (forced-colors: active) { .meter-fill { background: Highlight; } .meter-track { border: 1px solid CanvasText; } }

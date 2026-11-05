@@ -48,6 +48,21 @@ export const SCHEMA = [
     device TEXT NOT NULL,
     PRIMARY KEY (post_id, device)
   )`,
+  // Our own count of Blob operations / traffic, for the usage estimate in /admin
+  `CREATE TABLE IF NOT EXISTS usage_log (
+    day DATE NOT NULL,
+    kind TEXT NOT NULL,
+    n BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, kind)
+  )`,
+  // One row per device per board per day — estimates how many people loaded each board
+  `CREATE TABLE IF NOT EXISTS board_views (
+    board_id BIGINT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    device TEXT NOT NULL,
+    day DATE NOT NULL,
+    full_views INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (board_id, device, day)
+  )`,
   `CREATE TABLE IF NOT EXISTS rate_limits (
     key TEXT NOT NULL,
     win BIGINT NOT NULL,

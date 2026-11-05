@@ -1,5 +1,6 @@
 import { Zip, ZipPassThrough } from "fflate";
 import { attachmentHeader, authExport, loadPosts, safeName } from "@/lib/export";
+import { track } from "@/lib/usage";
 
 export const maxDuration = 300;
 
@@ -23,6 +24,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
     });
   }
 
+  let readBytes = 0;
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const zip = new Zip((e, chunk, final) => {
@@ -40,6 +42,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
           for (;;) {
             const { done, value } = await reader.read();
             if (done) break;
+            readBytes += value.byteLength;
             entry.push(value);
           }
           entry.push(new Uint8Array(0), true);
@@ -53,6 +56,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
         readme.push(new TextEncoder().encode("ยังไม่มีรูปภาพในบอร์ดนี้"), true);
       }
       zip.end();
+      await track("zip_bytes", readBytes); // zip downloads read every photo from Blob
     },
   });
 

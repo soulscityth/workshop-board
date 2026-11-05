@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Photo, Post } from "@/lib/types";
 import { useColumnCount, useFeed } from "@/lib/useFeed";
 import { openDisplayWindow } from "@/lib/present";
@@ -154,7 +154,40 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
     [admin, showToast, setPosts],
   );
 
-  const onOpen = useCallback((p: Post, i: number) => setViewer({ photos: p.p, i }), []);
+  // usage estimate: "this device opened this board" + how many full-size photos it opened
+  const fullOpens = useRef(0);
+  useEffect(() => {
+    if (!device) return;
+    const send = (full: number) => {
+      const body = JSON.stringify({ device, full });
+      try {
+        if (navigator.sendBeacon?.(`/api/b/${slug}/seen`, new Blob([body], { type: "text/plain" }))) return;
+      } catch {}
+      fetch(`/api/b/${slug}/seen`, { method: "POST", body, keepalive: true }).catch(() => {});
+    };
+    send(0);
+    const flush = () => {
+      if (fullOpens.current > 0) {
+        send(fullOpens.current);
+        fullOpens.current = 0;
+      }
+    };
+    const onVis = () => document.visibilityState === "hidden" && flush();
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", flush);
+    const t = window.setInterval(flush, 60_000);
+    return () => {
+      flush();
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", flush);
+      window.clearInterval(t);
+    };
+  }, [device, slug]);
+
+  const onOpen = useCallback((p: Post, i: number) => {
+    fullOpens.current += 1;
+    setViewer({ photos: p.p, i });
+  }, []);
 
   function download(kind: "csv" | "zip") {
     if (adminKey === null) return;

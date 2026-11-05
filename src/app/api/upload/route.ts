@@ -1,5 +1,6 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { ALLOWED_IMAGE_TYPES, cleanDevice, clientIp, err, getBoard, LIMITS, rateLimit } from "@/lib/server";
+import { track } from "@/lib/usage";
 
 /**
  * Issues short-lived client-upload tokens for Vercel Blob.
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
           { key: `up:ip:${ip}`, limit: LIMITS.uploadsPerIpPerMin },
         ]);
         if (!ok) throw new Error("rate limited");
+        await track("blob_put"); // each token ≈ one upload() = one Blob advanced operation
         return {
           allowedContentTypes: ALLOWED_IMAGE_TYPES,
           maximumSizeInBytes: LIMITS.maxUploadBytes,

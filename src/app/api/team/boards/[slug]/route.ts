@@ -2,6 +2,7 @@ import { del, list } from "@vercel/blob";
 import { sql } from "@/lib/db";
 import { err, getBoard, hashKey, json, newAdminKey } from "@/lib/server";
 import { isTeamRequest } from "@/lib/team";
+import { track } from "@/lib/usage";
 
 export const maxDuration = 120;
 
@@ -32,6 +33,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
       const urls = res.blobs.map((b) => b.url);
       for (let i = 0; i < urls.length; i += 500) await del(urls.slice(i, i + 500));
       removed += urls.length;
+      await track("blob_list");
       cursor = res.hasMore ? res.cursor : undefined;
     } while (cursor);
     await sql()`DELETE FROM boards WHERE id = ${board.id}`;
