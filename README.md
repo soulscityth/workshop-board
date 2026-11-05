@@ -23,7 +23,7 @@ A Padlet-style board for in-person workshops. Participants scan a QR code and po
 
 | Concern | How it's handled |
 |---|---|
-| 400 phones × poll every 4 s ≈ 100 req/s | `GET /api/b/[slug]/feed?since=<version>` returns only changes since a board **version number**. Every client at the same version requests the same URL, so the Vercel CDN serves it from cache (`s-maxage=2`). Postgres sees only a few queries per second. Polling pauses when the tab is hidden and backs off on errors. |
+| 400 phones polling ≈ up to 100 req/s | `GET /api/b/[slug]/feed?since=<version>` returns only changes since a board **version number** and is CDN-cached (`s-maxage=2`), so Postgres sees a few queries per second. Polling is **adaptive**: 4 s while posts are changing, backing off to 12 s when quiet, and 30 s when nobody has touched the phone for a minute (any touch polls immediately); nothing while the tab is hidden. Every poll is a Vercel Edge Request, which on Hobby is a **team-wide** quota (1M/month), so this matters for the other projects in the team too. |
 | Photo bandwidth (photo views × 400 viewers) | Cards load the ~40 KB thumbnail, lazily. The full 1600 px photo loads only in the full-screen viewer. Blob files are cached for a year. |
 | Shared venue Wi-Fi = one public IP | Rate limits are **per device** (10 posts/min). The per-IP limit is a high ceiling (300/min) so a whole room behind one NAT isn't blocked. |
 | Upload spikes | Photos go browser → Blob directly. Our server only signs a short-lived token. |

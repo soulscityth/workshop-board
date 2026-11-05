@@ -1,13 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { openChannel, type ToControl, type ToDisplay, type View } from "@/lib/present";
-import { useFeed } from "@/lib/useFeed";
+import { SCREEN_PACE, useFeed } from "@/lib/useFeed";
 import BoardWall, { ZoomView } from "./BoardWall";
 import { BlankScreen, Progress, QrCorner, QrScreen, SlideView, Stage } from "./Stage";
 
 /** Audience window for the projector. Shows whatever the presenter console sends. */
 export default function Display({ slug, initialTitle }: { slug: string; initialTitle: string }) {
-  const { meta, posts } = useFeed(slug, initialTitle);
+  const { meta, posts } = useFeed(slug, initialTitle, undefined, SCREEN_PACE);
   const [view, setView] = useState<View | null>(null);
   const [title, setTitle] = useState(initialTitle);
   const [fs, setFs] = useState(false);

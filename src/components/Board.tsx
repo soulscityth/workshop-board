@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Photo, Post } from "@/lib/types";
-import { useColumnCount, useFeed } from "@/lib/useFeed";
+import { PHONE_PACE, SCREEN_PACE, useColumnCount, useFeed } from "@/lib/useFeed";
 import { openDisplayWindow } from "@/lib/present";
 import { deviceId, getJSON, sessionGet, sessionSet, setJSON } from "@/lib/storage";
 import PostCard from "./PostCard";
@@ -33,7 +33,8 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
     window.setTimeout(() => setToast((x) => (x === t ? "" : x)), 2600);
   }, []);
   const onGone = useCallback(() => showToast("บอร์ดนี้ถูกลบแล้ว"), [showToast]);
-  const { meta, setMeta, posts, setPosts, loaded, offline, likeHold } = useFeed(slug, initialTitle, onGone);
+  // presenter console drives the projector, so it stays lively; phones adapt to save requests
+  const { meta, setMeta, posts, setPosts, loaded, offline, likeHold, kick } = useFeed(slug, initialTitle, onGone, presenter ? SCREEN_PACE : PHONE_PACE);
 
   // ---- device, liked set, admin key (stripped from the address bar) ----
   useEffect(() => {
@@ -82,9 +83,10 @@ export default function Board({ slug, initialTitle }: { slug: string; initialTit
   // ---- actions ----
   const onPosted = useCallback((p: Post) => {
     setPosts((prev) => new Map(prev).set(p.id, p));
+    kick();
     showToast("โพสต์แล้ว 🎉");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [showToast, setPosts]);
+  }, [showToast, setPosts, kick]);
 
   const onLike = useCallback(
     async (p: Post) => {
